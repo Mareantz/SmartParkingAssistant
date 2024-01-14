@@ -1,0 +1,19 @@
+#!/bin/bash
+
+g++ -c client.cpp -o client.o
+g++ -c window.cpp -o window.o
+g++ -c button.cpp -o button.o
+g++ window.o button.o client.o -o client -lsfml-graphics -lsfml-window -lsfml-system
+
+./client 127.0.0.1 2308
+# # Start the server and camera in the background
+# ./server & server_pid=$!
+# ./camera 127.0.0.1 2308 & camera_pid=$!
+
+# # Set up a trap to stop both processes when the script receives a SIGINT signal
+# trap "kill $server_pid $camera_pid" SIGINT
+
+# # Wait for both processes to finish
+# wait $server_pid $camera_pid
+
+exit 0

@@ -1,0 +1,12 @@
+#!/bin/bash
+
+g++ -c client.cpp -o client.o
+g++ -c window.cpp -o window.o
+g++ -c button.cpp -o button.o
+g++ -o camera camera.cpp
+g++ -o server server.cpp
+g++ window.o button.o client.o -o client -lsfml-graphics -lsfml-window -lsfml-system
+
+./server
+
+exit 0

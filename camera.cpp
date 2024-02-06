@@ -15,7 +15,7 @@
 #include <thread>
 #include <fstream>
 
-bool parcare1[6][24];
+bool parcare[6][24];
 bool client_slots[6][24] = {false};
 
 int port;
@@ -29,7 +29,7 @@ int main(int argc, char *argv[])
         {
             char c;
             fin >> c;
-            parcare1[i][j] = (c == '1');
+            parcare[i][j] = (c == '1');
         }
     }
     fin.close();
@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
         perror("Eroare la socket().\n");
         return errno;
     }
-
+    //socket ne-blocant cursul 6
     int flags = fcntl(socket_desc, F_GETFL, 0);
     fcntl(socket_desc, F_SETFL, flags | O_NONBLOCK);
 
@@ -112,13 +112,13 @@ int main(int argc, char *argv[])
                 if (strstr(line, "vreau") != NULL)
                 {
                     sscanf(line, "vreau %d %d", &i, &j);
-                    parcare1[i][j] = 1;
+                    parcare[i][j] = 1;
                     client_slots[i][j] = 1;
                 }
                 else if (strstr(line, "eliberez") != NULL)
                 {
                     sscanf(line, "eliberez %d %d", &i, &j);
-                    parcare1[i][j] = 0;
+                    parcare[i][j] = 0;
                     client_slots[i][j] = 0;
                 }
                 line = strtok(NULL, "\n");
@@ -135,7 +135,7 @@ int main(int argc, char *argv[])
             int y = rand() % 24;
             if (!client_slots[x][y])
             {
-                parcare1[x][y] = !parcare1[x][y];
+                parcare[x][y] = !parcare[x][y];
             }
         }
 
@@ -146,8 +146,8 @@ int main(int argc, char *argv[])
         {
             for (int j = 0; j < 24; ++j)
             {
-                message[length++] = parcare1[i][j] ? '1' : '0';
-                fout << (parcare1[i][j] ? '1' : '0');
+                message[length++] = parcare[i][j] ? '1' : '0';
+                fout << (parcare[i][j] ? '1' : '0');
             }
         }
         fout.close();

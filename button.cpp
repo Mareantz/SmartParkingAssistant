@@ -23,8 +23,9 @@ Button::Button(float x, float y, float width, float height, sf::Font font, std::
     sf::FloatRect textRect = this->text.getLocalBounds();
     this->text.setOrigin(textRect.left + textRect.width / 2.0f, textRect.top + textRect.height / 2.0f);
     this->text.setPosition(sf::Vector2f(x + width / 2.0f, y + height / 2.0f));
-    this->cooldown = 10.0f;
+    this->cooldown = 1.0f;
     isPressed = false;
+    this->initialPress = true;
 }
 
 void Button::update(const sf::Vector2f mousePos, int socket_desc)
@@ -36,6 +37,11 @@ void Button::update(const sf::Vector2f mousePos, int socket_desc)
         if (sf::Mouse::isButtonPressed(sf::Mouse::Left)&&clock.getElapsedTime().asSeconds()>cooldown)
         {
             clock.restart();
+            if(initialPress)
+            {
+                cooldown=10.0f;
+                initialPress=false;
+            }
             bzero(message, 256);
             isPressed = !isPressed;
             if (isPressed)

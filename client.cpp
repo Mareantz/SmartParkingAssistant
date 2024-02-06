@@ -11,10 +11,14 @@
 #include <iostream>
 #include <SFML/Graphics.hpp>
 #include <thread>
+#include <atomic>
 #include "window.h"
+#include "mutex.h"
 
 int port;
 Window window;
+std::atomic<bool> isRunning(true);
+std::mutex guard;
 
 bool parcare[6][24];
 bool** parcarePtr=new bool*[6];
@@ -65,7 +69,7 @@ int main(int argc, char *argv[])
     message[0] = '\0';
 
     std::thread receiveThread([&]() {
-        while (1) {
+        while (isRunning) {
             bzero(message, 256);
             if (read(socket_desc, message, 256) < 0) {
                 perror("[client]Eroare la read() de la server.\n");
@@ -73,9 +77,9 @@ int main(int argc, char *argv[])
             }
             message[strlen(message)] = '\0';
             char parkingStatus[256];
+            guard.lock();
             sscanf(message, "%s %d %d", parkingStatus, &parkingSlot_i, &parkingSlot_j);
             
-
             int index = 0;
             for (int i = 0; i < 6; ++i) {
                 for (int j = 0; j < 24; ++j) {
@@ -85,13 +89,14 @@ int main(int argc, char *argv[])
                     parcare[i][j] = (parkingStatus[index++] == '1');
                 }
             }
+            guard.unlock();
         }
+        return 0;
     });
 
-    window.run(parcarePtr,socket_desc,parkingSlotPtr_i,parkingSlotPtr_j);
+    window.run(parcarePtr,socket_desc,parkingSlotPtr_i,parkingSlotPtr_j,&isRunning);
     receiveThread.join();
 
     close(socket_desc);
-    delete[] parcarePtr;
     return 0;
 }

@@ -1,26 +1,27 @@
 #include "window.h"
 #include "button.h"
+#include "mutex.h"
 #include <iostream>
 
 #define SCREEN_DIVIDER 3
 
 std::string loc_parcare(int i, int j)
 {
-	std::string loc;
-	if (i == 0)
-		loc = "A";
-	else if (i == 1)
-		loc = "B";
-	else if (i == 2)
-		loc = "C";
-	else if (i == 3)
-		loc = "D";
-	else if (i == 4)
-		loc = "E";
-	else if (i == 5)
-		loc = "F";
-	loc += std::to_string(j + 1);
-	return loc;
+    std::string loc;
+    if (i == 0)
+        loc = "A";
+    else if (i == 1)
+        loc = "B";
+    else if (i == 2)
+        loc = "C";
+    else if (i == 3)
+        loc = "D";
+    else if (i == 4)
+        loc = "E";
+    else if (i == 5)
+        loc = "F";
+    loc += std::to_string(j + 1);
+    return loc;
 }
 
 Window::Window()
@@ -49,11 +50,12 @@ void Window::init()
     loadFont();
 }
 
-void Window::run(bool **parcare, int socket_desc,int* slot_i,int* slot_j)
+void Window::run(bool **parcare, int socket_desc, int *slot_i, int *slot_j, std::atomic<bool> *isRunning)
 {
     int i, j;
-    
-    Button myButton = Button(window.getSize().x*0.20, window.getSize().y*0.76, 120, 60, font, "Vreau loc", sf::Color::Red);
+
+    Button myButton = Button(window.getSize().x * 0.20, window.getSize().y * 0.76, 120, 60, font, "Vreau loc", sf::Color::Red);
+
     while (window.isOpen())
     {
         window.clear(sf::Color(80, 80, 80));
@@ -62,11 +64,14 @@ void Window::run(bool **parcare, int socket_desc,int* slot_i,int* slot_j)
         {
             if (event.type == sf::Event::Closed)
             {
-                window.close();
-                exit(0);
+                if (*slot_i == -1 && *slot_j == -1)
+                {
+                    *isRunning = false;
+                    window.close();
+                }
             }
             auto mouseCoords = window.mapPixelToCoords(myMouse.getPosition(window));
-            myButton.update(mouseCoords,socket_desc);
+            myButton.update(mouseCoords, socket_desc);
             // std::cout << mouseCoords.x << " " << mouseCoords.y << std::endl;
         }
         sf::RectangleShape rectangle(sf::Vector2f(window.getSize().x, window.getSize().y * 3 / 4 - 3));
@@ -83,16 +88,15 @@ void Window::run(bool **parcare, int socket_desc,int* slot_i,int* slot_j)
         int parkingWidth = 35;
         int parkingHeight = 47;
         int freeSlots = 0;
-        char rowLetters[]={'A','B','C','D','E','F'};
-
+        char rowLetters[] = {'A', 'B', 'C', 'D', 'E', 'F'};
+        
         for (int k = 0; k < 6; k++)
         {
             int startX = (k < 3) ? 91 : window.getSize().x * 0.55;
             int startY = (k % 3) * parkingHeight * 4 + 10;
             for (int l = 0; l < 24; l++)
             {
-                
-                
+
                 int i = l / 12;
                 int j = l % 12;
 
@@ -102,14 +106,15 @@ void Window::run(bool **parcare, int socket_desc,int* slot_i,int* slot_j)
 
                 sf::RectangleShape parkingSlot(sf::Vector2f(parkingWidth, parkingHeight));
                 parkingSlot.setPosition(startX + parkingWidth / 7 + j * (parkingWidth + parkingWidth / 7), startY + i * parkingHeight * 2);
-
+                guard.lock();
                 if (!parcare[k][l])
                     freeSlots++;
                 parkingSlot.setFillColor(parcare[k][l] ? sf::Color::Red : sf::Color::Green);
-                if(parcare[k][l]&&*slot_i==k&&*slot_j==l)
+                if (parcare[k][l] && *slot_i == k && *slot_j == l)
                 {
                     parkingSlot.setFillColor(sf::Color::Blue);
                 }
+                guard.unlock();
                 window.draw(parkingSlot);
 
                 sf::Text slotNumber;
@@ -141,7 +146,7 @@ void Window::run(bool **parcare, int socket_desc,int* slot_i,int* slot_j)
             rowLetter.setScale(sf::Vector2f(.5, .5));
             rowLetter.setString(rowLetters[k]);
             rowLetter.setFillColor(sf::Color::White);
-            rowLetter.setPosition(startX+window.getSize().x*0.18, startY + parkingHeight*1.2);
+            rowLetter.setPosition(startX + window.getSize().x * 0.18, startY + parkingHeight * 1.2);
             window.draw(rowLetter);
         }
 
@@ -151,23 +156,25 @@ void Window::run(bool **parcare, int socket_desc,int* slot_i,int* slot_j)
         freeSlotsText.setScale(sf::Vector2f(.5, .5));
         freeSlotsText.setString("Locuri disponibile: " + std::to_string(freeSlots));
         freeSlotsText.setFillColor(sf::Color::White);
-        freeSlotsText.setPosition(window.getSize().x*0.75, window.getSize().y*0.75);
+        freeSlotsText.setPosition(window.getSize().x * 0.75, window.getSize().y * 0.75);
         window.draw(freeSlotsText);
 
         sf::Text parkingStatus;
         parkingStatus.setFont(font);
         parkingStatus.setCharacterSize(50);
         parkingStatus.setScale(sf::Vector2f(.5, .5));
-        if(*slot_i!=-1&&*slot_j!=-1)
+        guard.lock();
+        if (*slot_i != -1 && *slot_j != -1)
         {
-            parkingStatus.setString("Locul tau este: "+loc_parcare(*slot_i,*slot_j));
+            parkingStatus.setString("Locul tau este: " + loc_parcare(*slot_i, *slot_j));
         }
         else
         {
             parkingStatus.setString("Nu ai loc");
         }
+        guard.unlock();
         parkingStatus.setFillColor(sf::Color::White);
-        parkingStatus.setPosition(window.getSize().x*0.2, window.getSize().y*0.75+100);
+        parkingStatus.setPosition(window.getSize().x * 0.2, window.getSize().y * 0.75 + 100);
         window.draw(parkingStatus);
 
         myButton.render(window);

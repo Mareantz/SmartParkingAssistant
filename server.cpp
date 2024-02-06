@@ -17,16 +17,26 @@
 #include <atomic>
 #include <mutex>
 #include <condition_variable>
-#include <vector>
 
 #define PORT 2308
 
-bool parcare1[6][24];
+bool parcare[6][24];
 std::mutex guard;
 int camera;
 bool camera_active = false;
 
 std::condition_variable flag;
+
+struct ClientData
+{
+	int clientSocket;
+	std::atomic<bool> clientConnected;
+	struct
+	{
+		short int i=-1;
+		short int j=-1;
+	}parkingSlot;
+};
 
 void timer_thread()
 {
@@ -56,16 +66,7 @@ std::string loc_parcare(int i, int j)
 	return loc;
 }
 
-struct ClientData
-{
-	int clientSocket;
-	std::atomic<bool> clientConnected;
-	struct
-	{
-		short int i=-1;
-		short int j=-1;
-	}parkingSlot;
-};
+
 
 void *handle_commands(ClientData *arg)
 {
@@ -83,7 +84,7 @@ void *handle_commands(ClientData *arg)
 		{
 			perror("[server]Eroare la read() de la client.\n");
 			data->clientConnected = false;
-			break;
+			return NULL;
 		}
 
 		if (strstr(message, "vreau") != NULL)
@@ -96,22 +97,21 @@ void *handle_commands(ClientData *arg)
 				{
 					i = rand() % 6;
 					j = rand() % 24;
-				} while (parcare1[i][j] == 1);
-				parcare1[i][j] = 1;
+				} while (parcare[i][j] == 1);
+				parcare[i][j] = 1;
 				guard.unlock();
 				flag.notify_all();
 				sprintf(response, "vreau %d %d\n", i, j);
 				if (write(camera, response, strlen(response)) <= 0)
 				{
+					std::cout<<"test\n";
 					perror("[server]Eroare la write() catre camera.\n");
 					continue;
 				}
-				std::cout << "write #1" << std::endl;
-				strcpy(response, "Ai primit locul de parcare: ");
-				strcat(response, loc_parcare(i, j).c_str());
+				// strcpy(response, "Ai primit locul de parcare: ");
+				// strcat(response, loc_parcare(i, j).c_str());
 				data->parkingSlot.i = i;
 				data->parkingSlot.j = j;
-				std::cout << "ai ajuns aici patroane" << std::endl;
 			}
 		}
 
@@ -119,7 +119,7 @@ void *handle_commands(ClientData *arg)
 		{
 			std::cout<<"Eliberez locul de parcare\n";
 			guard.lock();
-			parcare1[data->parkingSlot.i][data->parkingSlot.j] = 0;
+			parcare[data->parkingSlot.i][data->parkingSlot.j] = 0;
 			sprintf(response, "eliberez %d %d\n", data->parkingSlot.i, data->parkingSlot.j);
 			if (write(camera, response, strlen(response)) <= 0)
 			{
@@ -130,7 +130,7 @@ void *handle_commands(ClientData *arg)
 			data->parkingSlot.j = -1;
 			guard.unlock();
 			flag.notify_all();
-			strcpy(response, "Ai eliberat locul de parcare cu succes!");
+			//strcpy(response, "Ai eliberat locul de parcare cu succes!");
 		}
 		std::cout<<"[server]Mesajul a fost trasmis cu succes.\n";
 	}
@@ -167,7 +167,7 @@ void *get_parking_status(ClientData *arg)
 				{
 					break;
 				}
-				parcare1[i][j] = (message[index++] == '1');
+				parcare[i][j] = (message[index++] == '1');
 			}
 		}
 		guard.unlock();
@@ -197,7 +197,7 @@ void *send_parking_status(ClientData *arg)
 		{
 			for (int j = 0; j < 24; ++j)
 			{
-				message[length++] = parcare1[i][j] ? '1' : '0';
+				message[length++] = parcare[i][j] ? '1' : '0';
 			}
 		}
 		guard.unlock();
@@ -303,4 +303,5 @@ int main()
 			info_thread.detach();
 		}
 	}
+	return 0;
 }

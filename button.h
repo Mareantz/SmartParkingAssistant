@@ -9,6 +9,7 @@ class Button
     bool isPressed;
     float cooldown;
     sf::Clock clock;
+    bool initialPress;
     public:
     Button();
     Button(float x, float y,float width,float height, sf::Font font, std::string text, sf::Color baseColor);

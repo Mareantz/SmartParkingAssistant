@@ -1,0 +1,3 @@
+## Note on the LaTeX file
+
+The technical report in this project is elaborated according to the LNCS (Lecture Notes in Computer Science) format. The corresponding LaTeX template file file is necessary for the correct formatting and presentation of the report. The LNCS format is available on the [Springer's LNCS website](https://www.springer.com/gp/computer-science/lncs/conference-proceedings-guidelines).
